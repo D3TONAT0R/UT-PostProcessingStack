@@ -43,6 +43,12 @@ namespace UnityEngine.Rendering.PostProcessing
         /// </summary>
         public BoolParameter enabled = new BoolParameter { overrideState = true, value = false };
 
+        /// <summary>
+        /// Whether or not to ignore the global settings set in <seealso cref="PostProcessGlobalSettings"/>.
+        /// </summary>
+        [Tooltip("Should this effect always be rendered regardless of the global effect settings?")]
+        public BoolParameter ignoreGlobalSettings = new BoolParameter { overrideState = false, value = false };
+
         internal ReadOnlyCollection<ParameterOverride> parameters;
 
         void OnEnable()

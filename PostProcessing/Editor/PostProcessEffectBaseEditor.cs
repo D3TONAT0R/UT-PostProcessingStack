@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering.PostProcessing;
 
@@ -21,6 +22,8 @@ namespace UnityEditor.Rendering.PostProcessing
         SerializedProperty m_Enabled;
         Editor m_Inspector;
 
+        SerializedParameterOverride m_IgnoreGlobalSettings;
+
         internal PostProcessEffectBaseEditor()
         {
         }
@@ -40,6 +43,9 @@ namespace UnityEditor.Rendering.PostProcessing
             serializedObject = new SerializedObject(target);
             m_Enabled = serializedObject.FindProperty("enabled.value");
             activeProperty = serializedObject.FindProperty("active");
+            var ignoreGlobalSettings_obj = serializedObject.FindProperty(nameof(target.ignoreGlobalSettings));
+            var ignoreGlobalSettings_attr = target.GetType().GetField(nameof(target.ignoreGlobalSettings)).GetCustomAttributes(false).Cast<Attribute>().ToArray();
+            m_IgnoreGlobalSettings = new SerializedParameterOverride(ignoreGlobalSettings_obj, ignoreGlobalSettings_attr);
             OnEnable();
         }
 
@@ -101,6 +107,8 @@ namespace UnityEditor.Rendering.PostProcessing
                 enabled = !GUILayout.Toggle(!enabled, EditorUtilities.GetContent("Off|Disable this effect."), EditorStyles.miniButtonRight, GUILayout.Width(35f), GUILayout.ExpandWidth(false));
                 m_Enabled.boolValue = enabled;
             }
+            PropertyField(m_IgnoreGlobalSettings);
+            GUILayout.Space(10);
         }
 
         void SetAllOverridesTo(bool state)

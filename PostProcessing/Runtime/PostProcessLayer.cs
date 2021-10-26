@@ -28,6 +28,12 @@ namespace UnityEngine.Rendering.PostProcessing
         /// </summary>
         public enum Antialiasing
         {
+
+            /// <summary>
+            /// Use the global settings defined in <see cref="PostProcessGlobalSettings"/>.
+            /// </summary>
+            UseGlobalSettings,
+
             /// <summary>
             /// No anti-aliasing.
             /// </summary>
@@ -82,9 +88,9 @@ namespace UnityEngine.Rendering.PostProcessing
         public bool finalBlitToCameraTarget = false;
 
         /// <summary>
-        /// The anti-aliasing method to use for this camera. By default it's set to <c>None</c>.
+        /// The anti-aliasing method to use for this camera. By default it's set to <c>UseGlobalSettings</c>.
         /// </summary>
-        public Antialiasing antialiasingMode = Antialiasing.None;
+        public Antialiasing antialiasingMode = Antialiasing.UseGlobalSettings;
 
         /// <summary>
         /// Temporal Anti-aliasing settings for this camera.
@@ -189,6 +195,22 @@ namespace UnityEngine.Rendering.PostProcessing
         /// </summary>
         public bool haveBundlesBeenInited { get; private set; }
 
+        // The current Antialiasing mode this layer should use.
+        public Antialiasing currentAntialiasingMode
+		{
+			get
+			{
+                if(antialiasingMode == Antialiasing.UseGlobalSettings)
+				{
+                    return PostProcessGlobalSettings.defaultAntialiasingMethod;
+				}
+                else
+				{
+                    return antialiasingMode;
+				}
+			}
+		}
+        
         // Settings/Renderer bundles mapped to settings types
         Dictionary<Type, PostProcessBundle> m_Bundles;
 
@@ -537,7 +559,7 @@ namespace UnityEngine.Rendering.PostProcessing
             context.command = m_LegacyCmdBufferOpaque;
             TextureLerper.instance.BeginFrame(context);
             UpdateVolumeSystem(context.camera, context.command);
-
+            
             // Lighting & opaque-only effects
             var aoBundle = GetBundle<AmbientOcclusion>();
             var aoSettings = aoBundle.CastSettings<AmbientOcclusion>();
@@ -557,23 +579,26 @@ namespace UnityEngine.Rendering.PostProcessing
             if (context.stereoActive)
                 context.UpdateSinglePassStereoState(context.IsTemporalAntialiasingActive(), aoSupported, isScreenSpaceReflectionsActive);
 #endif
-            // Ambient-only AO is a special case and has to be done in separate command buffers
-            if (isAmbientOcclusionDeferred)
+            if (aoSettings.ignoreGlobalSettings.value || PostProcessGlobalSettings.IsEffectEnabled(typeof(AmbientOcclusion)))
             {
-                var ao = aoRenderer.Get();
+                // Ambient-only AO is a special case and has to be done in separate command buffers
+                if (isAmbientOcclusionDeferred)
+                {
+                    var ao = aoRenderer.Get();
 
-                // Render as soon as possible - should be done async in SRPs when available
-                context.command = m_LegacyCmdBufferBeforeReflections;
-                ao.RenderAmbientOnly(context);
+                    // Render as soon as possible - should be done async in SRPs when available
+                    context.command = m_LegacyCmdBufferBeforeReflections;
+                    ao.RenderAmbientOnly(context);
 
-                // Composite with GBuffer right before the lighting pass
-                context.command = m_LegacyCmdBufferBeforeLighting;
-                ao.CompositeAmbientOnly(context);
-            }
-            else if (isAmbientOcclusionOpaque)
-            {
-                context.command = m_LegacyCmdBufferOpaque;
-                aoRenderer.Get().RenderAfterOpaque(context);
+                    // Composite with GBuffer right before the lighting pass
+                    context.command = m_LegacyCmdBufferBeforeLighting;
+                    ao.CompositeAmbientOnly(context);
+                }
+                else if (isAmbientOcclusionOpaque)
+                {
+                    context.command = m_LegacyCmdBufferOpaque;
+                    aoRenderer.Get().RenderAfterOpaque(context);
+                }
             }
 
             bool isFogActive = fog.IsEnabledAndSupported(context);
@@ -605,7 +630,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
                 if (isScreenSpaceReflectionsActive)
                 {
-                    ssrRenderer.Render(context);
+                    ssrRenderer.RenderIfEnabled(context);
                     opaqueOnlyEffects--;
                     UpdateSrcDstForOpaqueOnly(ref srcTarget, ref dstTarget, context, cameraTarget, opaqueOnlyEffects);
                 }
@@ -869,7 +894,7 @@ namespace UnityEngine.Rendering.PostProcessing
             context.resources = m_Resources;
             context.propertySheets = m_PropertySheetFactory;
             context.debugLayer = debugLayer;
-            context.antialiasing = antialiasingMode;
+            context.antialiasing = currentAntialiasingMode;
             context.temporalAntialiasing = temporalAntialiasing;
             context.logHistogram = m_LogHistogram;
 
@@ -1043,7 +1068,7 @@ namespace UnityEngine.Rendering.PostProcessing
                 bool hasBeforeStackEffects = HasActiveEffects(PostProcessEvent.BeforeStack, context);
                 bool hasAfterStackEffects = HasActiveEffects(PostProcessEvent.AfterStack, context) && !breakBeforeColorGrading;
                 bool needsFinalPass = (hasAfterStackEffects
-                    || (antialiasingMode == Antialiasing.FastApproximateAntialiasing) || (antialiasingMode == Antialiasing.SubpixelMorphologicalAntialiasing && subpixelMorphologicalAntialiasing.IsSupported()))
+                    || (currentAntialiasingMode == Antialiasing.FastApproximateAntialiasing) || (currentAntialiasingMode == Antialiasing.SubpixelMorphologicalAntialiasing && subpixelMorphologicalAntialiasing.IsSupported()))
                     && !breakBeforeColorGrading;
 
                 // Right before the builtin stack
@@ -1124,7 +1149,7 @@ namespace UnityEngine.Rendering.PostProcessing
             // If there's only one active effect, we can simply execute it and skip the rest
             if (count == 1)
             {
-                m_ActiveEffects[0].Render(context);
+                m_ActiveEffects[0].RenderIfEnabled(context);
             }
             else
             {
@@ -1149,7 +1174,7 @@ namespace UnityEngine.Rendering.PostProcessing
                 {
                     context.source = m_Targets[i];
                     context.destination = m_Targets[i + 1];
-                    m_ActiveEffects[i].Render(context);
+                    m_ActiveEffects[i].RenderIfEnabled(context);
                 }
 
                 cmd.ReleaseTemporaryRT(tempTarget1);
@@ -1199,7 +1224,7 @@ namespace UnityEngine.Rendering.PostProcessing
                 context.destination = tempTarget;
 
                 // Handle FXAA's keep alpha mode
-                if (antialiasingMode == Antialiasing.FastApproximateAntialiasing && !fastApproximateAntialiasing.keepAlpha)
+                if (currentAntialiasingMode == Antialiasing.FastApproximateAntialiasing && !fastApproximateAntialiasing.keepAlpha)
                     uberSheet.properties.SetFloat(ShaderIDs.LumaInAlpha, 1f);
             }
 
@@ -1304,7 +1329,7 @@ namespace UnityEngine.Rendering.PostProcessing
                 if (context.stereoActive && context.stereoRenderingMode == PostProcessRenderContext.StereoRenderingMode.SinglePassInstanced)
                     uberSheet.EnableKeyword("STEREO_INSTANCING_ENABLED");
 
-                if (antialiasingMode == Antialiasing.FastApproximateAntialiasing)
+                if (currentAntialiasingMode == Antialiasing.FastApproximateAntialiasing)
                 {
                     uberSheet.EnableKeyword(fastApproximateAntialiasing.fastMode
                         ? "FXAA_LOW"
@@ -1314,7 +1339,7 @@ namespace UnityEngine.Rendering.PostProcessing
                     if (fastApproximateAntialiasing.keepAlpha)
                         uberSheet.EnableKeyword("FXAA_KEEP_ALPHA");
                 }
-                else if (antialiasingMode == Antialiasing.SubpixelMorphologicalAntialiasing && subpixelMorphologicalAntialiasing.IsSupported())
+                else if (currentAntialiasingMode == Antialiasing.SubpixelMorphologicalAntialiasing && subpixelMorphologicalAntialiasing.IsSupported())
                 {
                     tempTarget = m_TargetPool.Get();
                     var finalDestination = context.destination;
@@ -1367,7 +1392,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
             if (!useTempTarget)
             {
-                effect.renderer.Render(context);
+                effect.renderer.RenderIfEnabled(context);
                 return -1;
             }
 
@@ -1375,7 +1400,7 @@ namespace UnityEngine.Rendering.PostProcessing
             var tempTarget = m_TargetPool.Get();
             context.GetScreenSpaceTemporaryRT(context.command, tempTarget, 0, context.sourceFormat);
             context.destination = tempTarget;
-            effect.renderer.Render(context);
+            effect.renderer.RenderIfEnabled(context);
             context.source = tempTarget;
             context.destination = finalDestination;
             return tempTarget;

@@ -53,7 +53,21 @@ namespace UnityEngine.Rendering.PostProcessing
         /// The render method called by <see cref="PostProcessLayer"/> when the effect is rendered.
         /// </summary>
         /// <param name="context">A context object</param>
+        public void RenderIfEnabled(PostProcessRenderContext context)
+		{
+            if(IsEnabledGlobally())
+			{
+                Render(context);
+            }
+        }
+
+        /// <summary>
+        /// Renders the effect if it's enabled.
+        /// </summary>
+        /// <param name="context"></param>
         public abstract void Render(PostProcessRenderContext context);
+
+        internal abstract bool IsEnabledGlobally();
 
         internal abstract void SetSettings(PostProcessEffectSettings settings);
     }
@@ -74,5 +88,16 @@ namespace UnityEngine.Rendering.PostProcessing
         {
             this.settings = (T)settings;
         }
-    }
+
+		internal override bool IsEnabledGlobally()
+		{
+			if(settings.ignoreGlobalSettings.value)
+			{
+                return true;
+			} else
+			{
+                return PostProcessGlobalSettings.IsEffectEnabled(settings.GetType());
+			}
+		}
+	}
 }

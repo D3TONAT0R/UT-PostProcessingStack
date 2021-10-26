@@ -987,7 +987,7 @@ namespace UnityEngine.Rendering.PostProcessing
         public static bool IsTemporalAntialiasingActive(PostProcessLayer layer)
         {
             return IsPostProcessingActive(layer)
-                && layer.antialiasingMode == PostProcessLayer.Antialiasing.TemporalAntialiasing
+                && layer.currentAntialiasingMode == PostProcessLayer.Antialiasing.TemporalAntialiasing
                 && layer.temporalAntialiasing.IsSupported();
         }
 

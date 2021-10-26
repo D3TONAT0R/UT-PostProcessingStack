@@ -44,6 +44,7 @@ namespace UnityEditor.Rendering.PostProcessing
 
         static GUIContent[] s_AntialiasingMethodNames =
         {
+            new GUIContent("Use Global Settings"),
             new GUIContent("No Anti-aliasing"),
             new GUIContent("Fast Approximate Anti-aliasing (FXAA)"),
             new GUIContent("Subpixel Morphological Anti-aliasing (SMAA)"),
