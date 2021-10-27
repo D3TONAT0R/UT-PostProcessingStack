@@ -32,6 +32,7 @@ namespace UnityEditor.Rendering.PostProcessing
 
             foreach (var field in fields)
             {
+                if (field.Name == nameof(PostProcessEffectSettings.ignoreGlobalSettings)) continue;
                 var property = serializedObject.FindProperty(field.Name);
                 var attributes = field.GetCustomAttributes(false).Cast<Attribute>().ToArray();
                 var parameter = new SerializedParameterOverride(property, attributes);
