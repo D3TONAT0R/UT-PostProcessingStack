@@ -28,12 +28,6 @@ namespace UnityEngine.Rendering.PostProcessing
         /// </summary>
         public enum Antialiasing
         {
-
-            /// <summary>
-            /// Use the global settings defined in <see cref="PostProcessGlobalSettings"/>.
-            /// </summary>
-            UseGlobalSettings,
-
             /// <summary>
             /// No anti-aliasing.
             /// </summary>
@@ -54,7 +48,12 @@ namespace UnityEngine.Rendering.PostProcessing
             /// of it's temporal nature, it can introduce ghosting artifacts on fast moving objects
             /// in highly contrasted areas.
             /// </summary>
-            TemporalAntialiasing
+            TemporalAntialiasing,
+
+            /// <summary>
+            /// Use the global settings defined in <see cref="PostProcessGlobalSettings"/>.
+            /// </summary>
+            UseGlobalSettings
         }
 
         /// <summary>
