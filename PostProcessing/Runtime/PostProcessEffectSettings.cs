@@ -91,7 +91,17 @@ namespace UnityEngine.Rendering.PostProcessing
                 prop.overrideState = state;
             }
         }
-        
+
+        /// <summary>
+        /// Returns <c>true</c> if the effect is currently enabled (both the effect itself and in the global settings) and supported.
+        /// </summary>
+        /// <param name="context">The current post-processing render context</param>
+        /// <returns><c>true</c> if the effect is currently enabled and supported</returns>
+        public bool ShouldRenderEffect(PostProcessRenderContext context)
+		{
+            return (ignoreGlobalSettings || PostProcessGlobalSettings.IsEffectEnabled(GetType())) && IsEnabledAndSupported(context);
+		}
+
         /// <summary>
         /// Returns <c>true</c> if the effect is currently enabled and supported.
         /// </summary>

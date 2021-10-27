@@ -50,19 +50,7 @@ namespace UnityEngine.Rendering.PostProcessing
         }
 
         /// <summary>
-        /// The render method called by <see cref="PostProcessLayer"/> when the effect is rendered.
-        /// </summary>
-        /// <param name="context">A context object</param>
-        public void RenderIfEnabled(PostProcessRenderContext context)
-		{
-            if(IsEnabledGlobally())
-			{
-                Render(context);
-            }
-        }
-
-        /// <summary>
-        /// Renders the effect if it's enabled.
+        /// Renders the effect.
         /// </summary>
         /// <param name="context"></param>
         public abstract void Render(PostProcessRenderContext context);

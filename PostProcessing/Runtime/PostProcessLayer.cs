@@ -564,7 +564,7 @@ namespace UnityEngine.Rendering.PostProcessing
             var aoSettings = aoBundle.CastSettings<AmbientOcclusion>();
             var aoRenderer = aoBundle.CastRenderer<AmbientOcclusionRenderer>();
 
-            bool aoSupported = aoSettings.IsEnabledAndSupported(context);
+            bool aoSupported = aoSettings.ShouldRenderEffect(context);
             bool aoAmbientOnly = aoRenderer.IsAmbientOnly(context);
             bool isAmbientOcclusionDeferred = aoSupported && aoAmbientOnly;
             bool isAmbientOcclusionOpaque = aoSupported && !aoAmbientOnly;
@@ -572,7 +572,7 @@ namespace UnityEngine.Rendering.PostProcessing
             var ssrBundle = GetBundle<ScreenSpaceReflections>();
             var ssrSettings = ssrBundle.settings;
             var ssrRenderer = ssrBundle.renderer;
-            bool isScreenSpaceReflectionsActive = ssrSettings.IsEnabledAndSupported(context);
+            bool isScreenSpaceReflectionsActive = ssrSettings.ShouldRenderEffect(context);
 
 #if UNITY_2019_1_OR_NEWER
             if (context.stereoActive)
@@ -629,7 +629,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
                 if (isScreenSpaceReflectionsActive)
                 {
-                    ssrRenderer.RenderIfEnabled(context);
+                    ssrRenderer.Render(context);
                     opaqueOnlyEffects--;
                     UpdateSrcDstForOpaqueOnly(ref srcTarget, ref dstTarget, context, cameraTarget, opaqueOnlyEffects);
                 }
@@ -805,7 +805,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
             foreach (var bundle in m_Bundles)
             {
-                if (bundle.Value.settings.IsEnabledAndSupported(context))
+                if (bundle.Value.settings.ShouldRenderEffect(context))
                     flags |= bundle.Value.renderer.GetCameraFlags();
             }
 
@@ -858,7 +858,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
             foreach (var item in list)
             {
-                bool enabledAndSupported = item.bundle.settings.IsEnabledAndSupported(context);
+                bool enabledAndSupported = item.bundle.settings.ShouldRenderEffect(context);
 
                 if (context.isSceneView)
                 {
@@ -1136,7 +1136,7 @@ namespace UnityEngine.Rendering.PostProcessing
             for (int i = 0; i < list.Count; i++)
             {
                 var effect = list[i].bundle;
-                if (effect.settings.IsEnabledAndSupported(context))
+                if (effect.settings.ShouldRenderEffect(context))
                 {
                     if (!context.isSceneView || (context.isSceneView && effect.attribute.allowInSceneView))
                         m_ActiveEffects.Add(effect.renderer);
@@ -1148,7 +1148,7 @@ namespace UnityEngine.Rendering.PostProcessing
             // If there's only one active effect, we can simply execute it and skip the rest
             if (count == 1)
             {
-                m_ActiveEffects[0].RenderIfEnabled(context);
+                m_ActiveEffects[0].Render(context);
             }
             else
             {
@@ -1173,7 +1173,7 @@ namespace UnityEngine.Rendering.PostProcessing
                 {
                     context.source = m_Targets[i];
                     context.destination = m_Targets[i + 1];
-                    m_ActiveEffects[i].RenderIfEnabled(context);
+                    m_ActiveEffects[i].Render(context);
                 }
 
                 cmd.ReleaseTemporaryRT(tempTarget1);
@@ -1383,7 +1383,7 @@ namespace UnityEngine.Rendering.PostProcessing
         {
             var effect = GetBundle<T>();
 
-            if (!effect.settings.IsEnabledAndSupported(context))
+            if (!effect.settings.ShouldRenderEffect(context))
                 return -1;
 
             if (m_IsRenderingInSceneView && !effect.attribute.allowInSceneView)
@@ -1391,7 +1391,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
             if (!useTempTarget)
             {
-                effect.renderer.RenderIfEnabled(context);
+                effect.renderer.Render(context);
                 return -1;
             }
 
@@ -1399,7 +1399,7 @@ namespace UnityEngine.Rendering.PostProcessing
             var tempTarget = m_TargetPool.Get();
             context.GetScreenSpaceTemporaryRT(context.command, tempTarget, 0, context.sourceFormat);
             context.destination = tempTarget;
-            effect.renderer.RenderIfEnabled(context);
+            effect.renderer.Render(context);
             context.source = tempTarget;
             context.destination = finalDestination;
             return tempTarget;
@@ -1407,7 +1407,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
         bool ShouldGenerateLogHistogram(PostProcessRenderContext context)
         {
-            bool autoExpo = GetBundle<AutoExposure>().settings.IsEnabledAndSupported(context);
+            bool autoExpo = GetBundle<AutoExposure>().settings.ShouldRenderEffect(context);
             bool lightMeter = debugLayer.lightMeter.IsRequestedAndSupported(context);
             return autoExpo || lightMeter;
         }
