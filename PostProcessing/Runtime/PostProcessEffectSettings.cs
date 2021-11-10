@@ -97,9 +97,9 @@ namespace UnityEngine.Rendering.PostProcessing
         /// </summary>
         /// <param name="context">The current post-processing render context</param>
         /// <returns><c>true</c> if the effect is currently enabled and supported</returns>
-        public bool ShouldRenderEffect(PostProcessRenderContext context)
+        public bool ShouldRenderEffect(PostProcessRenderContext context, PostProcessLayer layer)
 		{
-            return (ignoreGlobalSettings || PostProcessGlobalSettings.IsEffectEnabled(GetType())) && IsEnabledAndSupported(context);
+            return (ignoreGlobalSettings || PostProcessGlobalSettings.IsEffectEnabled(GetType())) && IsEnabledAndSupported(context) && !layer.IsEffectFilteredOut(this);
 		}
 
         /// <summary>

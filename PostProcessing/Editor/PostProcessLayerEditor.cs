@@ -14,12 +14,19 @@ namespace UnityEditor.Rendering.PostProcessing
     [CanEditMultipleObjects, CustomEditor(typeof(PostProcessLayer))]
     sealed class PostProcessLayerEditor : BaseEditor<PostProcessLayer>
     {
+
+        static List<string> availableEffectTypes;
+
         SerializedProperty m_StopNaNPropagation;
 #pragma warning disable 414
         SerializedProperty m_DirectToCameraTarget;
 #pragma warning restore 414
         SerializedProperty m_VolumeTrigger;
         SerializedProperty m_VolumeLayer;
+
+        SerializedProperty m_FilterMode;
+        SerializedProperty m_FilterList;
+        ReorderableList filteReorderableList;
 
         SerializedProperty m_AntialiasingMode;
         SerializedProperty m_TaaJitterSpread;
@@ -44,11 +51,11 @@ namespace UnityEditor.Rendering.PostProcessing
 
         static GUIContent[] s_AntialiasingMethodNames =
         {
-            new GUIContent("Use Global Settings"),
             new GUIContent("No Anti-aliasing"),
             new GUIContent("Fast Approximate Anti-aliasing (FXAA)"),
             new GUIContent("Subpixel Morphological Anti-aliasing (SMAA)"),
-            new GUIContent("Temporal Anti-aliasing (TAA)")
+            new GUIContent("Temporal Anti-aliasing (TAA)"),
+            new GUIContent("Use Global Settings")
         };
 
         enum ExportMode
@@ -61,10 +68,19 @@ namespace UnityEditor.Rendering.PostProcessing
 
         void OnEnable()
         {
+            if(availableEffectTypes == null)
+			{
+                InitAvailableEffectList();
+			}
+
             m_StopNaNPropagation = FindProperty(x => x.stopNaNPropagation);
             m_DirectToCameraTarget = FindProperty(x => x.finalBlitToCameraTarget);
             m_VolumeTrigger = FindProperty(x => x.volumeTrigger);
             m_VolumeLayer = FindProperty(x => x.volumeLayer);
+
+            m_FilterMode = FindProperty(x => x.filterMode);
+            m_FilterList = FindProperty(x => x.filterList);
+            filteReorderableList = new ReorderableList(serializedObject, m_FilterList, false, true, true, true);
 
             m_AntialiasingMode = FindProperty(x => x.antialiasingMode);
             m_TaaJitterSpread = FindProperty(x => x.temporalAntialiasing.jitterSpread);
@@ -86,6 +102,17 @@ namespace UnityEditor.Rendering.PostProcessing
             #endif
         }
 
+        void InitAvailableEffectList()
+		{
+            availableEffectTypes = new List<string>();
+            foreach(var assembly in AppDomain.CurrentDomain.GetAssemblies())
+			{
+                if (assembly.FullName.StartsWith("System")) continue;
+                availableEffectTypes.AddRange(assembly.GetTypes().Where(t => t.IsSubclassOf(typeof(PostProcessEffectSettings))).Select(t => t.Name));
+            }
+            availableEffectTypes.Sort();
+		}
+
         void OnDisable()
         {
             m_CustomLists = null;
@@ -98,6 +125,7 @@ namespace UnityEditor.Rendering.PostProcessing
             var camera = m_Target.GetComponent<Camera>();
 
             DoVolumeBlending();
+            DoFiltering();
             DoAntialiasing();
             DoFog(camera);
 
@@ -147,6 +175,40 @@ namespace UnityEditor.Rendering.PostProcessing
                     EditorGUILayout.HelpBox("No layer has been set, the trigger will never be affected by volumes.", MessageType.Warning);
                 else if (mask == -1 || ((mask & 1) != 0))
                     EditorGUILayout.HelpBox("Do not use \"Everything\" or \"Default\" as a layer mask as it will slow down the volume blending process! Put post-processing volumes in their own dedicated layer for best performances.", MessageType.Warning);
+            }
+            EditorGUI.indentLevel--;
+
+            EditorGUILayout.Space();
+        }
+
+        void DoFiltering()
+        {
+            EditorGUILayout.LabelField(EditorUtilities.GetContent("Effect Filtering"), EditorStyles.boldLabel);
+            EditorGUI.indentLevel++;
+            {
+                EditorGUILayout.PropertyField(m_FilterMode);
+
+                if (m_FilterMode.intValue > 0)
+                {
+                    string label = m_FilterMode.intValue == (int)PostProcessLayer.EffectFiltering.Blacklist ? "Blacklist Effects" : "Whitelisted Effects";
+
+                    filteReorderableList.drawHeaderCallback = (rect) =>
+                    {
+                        EditorGUI.LabelField(rect, label);
+                    };
+
+                    filteReorderableList.drawElementCallback = (rect, index, isActive, isFocused) =>
+                    {
+                        int i = availableEffectTypes.IndexOf(m_FilterList.GetArrayElementAtIndex(index).stringValue);
+                        var i1 = EditorGUI.Popup(rect, i, availableEffectTypes.ToArray());
+                        if(i != i1)
+						{
+                            m_FilterList.GetArrayElementAtIndex(index).stringValue = availableEffectTypes[i1];
+						}
+                    };
+
+                    filteReorderableList.DoLayoutList();
+                }
             }
             EditorGUI.indentLevel--;
 
