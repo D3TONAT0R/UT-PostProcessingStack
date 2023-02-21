@@ -3,6 +3,7 @@ using System.Linq;
 
 namespace UnityEditor.Rendering.PostProcessing
 {
+#if !D3T_CORE
     [InitializeOnLoad]
     sealed class DefineSetter
     {
@@ -42,4 +43,5 @@ namespace UnityEditor.Rendering.PostProcessing
             return attrs != null && attrs.Length > 0;
         }
     }
+#endif
 }
