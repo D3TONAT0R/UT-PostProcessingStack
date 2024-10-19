@@ -52,7 +52,7 @@ namespace UnityEngine.Rendering.PostProcessing
 		}
 		private static PostProcessLayer.Antialiasing _defaultAntialiasingMethod;
 
-		private static List<Type> disabledEffects;
+		private static readonly List<Type> disabledEffects = new List<Type>();
 
 		/// <summary>
 		/// Sets the given effect type's enabled state. Defaults to enabled if not set.
@@ -94,7 +94,7 @@ namespace UnityEngine.Rendering.PostProcessing
 		public static void ResetSettingsToDefault()
 		{
 			_defaultAntialiasingMethod = PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing;
-			disabledEffects = new List<Type>();
+			disabledEffects.Clear();
 		}
 	}
 }
